@@ -5,6 +5,9 @@
  *   slash       { [command]: (invocation, ctx) => AppResponse }
  *   components  { [prefix]: (interaction, rest, ctx) => ComponentResponse }
  *               for buttons whose custom_id is "<prefix>:<rest>"
+ *   events      { [event]: { capability?, handle: (hubEvent, ctx) => void } }
+ *               hub-wide events, subscribed to only where the hub advertises
+ *               the capability
  *
  * ctx is the hub the dispatch came from: { hubUrl, client, store }.
  */
@@ -12,6 +15,7 @@ export function createRouter(features) {
   const slash = new Map();
   const components = new Map();
   const commands = [];
+  const events = new Map();
   for (const feature of features) {
     for (const command of feature.commands ?? []) {
       if (slash.has(command.name)) throw new Error(`/${command.name} is registered twice`);
@@ -24,9 +28,24 @@ export function createRouter(features) {
       if (components.has(prefix)) throw new Error(`component prefix "${prefix}" is registered twice`);
       components.set(prefix, handler);
     }
+    for (const [event, spec] of Object.entries(feature.events ?? {})) {
+      if (events.has(event)) throw new Error(`event "${event}" is handled twice`);
+      events.set(event, spec);
+    }
   }
   return {
     commands,
+    /** What this hub can serve, for PUT /me/app/subscriptions. */
+    async subscriptions(client) {
+      const out = [];
+      for (const [event, spec] of events) {
+        if (!spec.capability || (await client.hasCapability(spec.capability))) out.push({ event });
+      }
+      return out;
+    },
+    onEvent(event, ctx) {
+      return events.get(event.event)?.handle(event, ctx);
+    },
     onSlashCommand(inv, ctx) {
       const handler = slash.get(inv.command);
       if (!handler) return { reply: { body: `I don't know /${inv.command}.` }, ephemeral: true };

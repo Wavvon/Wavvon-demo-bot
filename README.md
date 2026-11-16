@@ -11,6 +11,11 @@ official and demo hubs, and one process can serve several hubs at once.
 | `/coin` | The smallest slash command there is. |
 | `/faq` | A reply with buttons; a click is answered to the person who clicked. |
 | `/docs <topic>` | Links the matching page of the [Wavvon docs](https://github.com/Wavvon/Wavvon-docs). `/docs` alone lists the topics. |
+| `/welcome set [#channel]`, `/welcome off` | Hub events: greets each new member in the chosen channel (the current one if none is named). Needs a hub advertising `events.member.joined`. |
+
+Commands that change the bot's settings are registered as *privileged*: the hub
+itself refuses them to anyone without `messages.manage`, so the bot never has
+to decide who is in charge.
 
 A program on Wavvon is a client like any other: an Ed25519 key, the same login,
 the same permissions. What lets it register commands is a role carrying

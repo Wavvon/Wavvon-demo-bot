@@ -46,9 +46,8 @@ async function fromBot(match, what) {
   }
 }
 
-const say = async (content) => {
+const say = async (content) =>
   ok(await tester.rest.POST("/channels/{channel_id}/messages", { params: { path: { channel_id: channel.id } }, body: { content } }));
-};
 
 await say("/roll 3d6");
 const roll = await fromBot((m) => /rolled 3d6/.test(m.content), "/roll 3d6");
@@ -73,6 +72,30 @@ const button = faq.components[0].components[1];
 events.send({ type: "component_interaction", message_id: faq.id, custom_id: button.custom_id, values: [] });
 const answer = await fromBot((m) => m.content?.includes(button.label), `button ${button.custom_id}`);
 console.log(`/faq button "${button.label}" -> ${answer.content}`);
+
+if (await bot.hasCapability("events.member.joined")) {
+  // The hub refuses a privileged command itself and answers the POST with its refusal.
+  const denied = await say("/welcome set");
+  assert.match(denied.content, /permission/i);
+  console.log(`/welcome set as a plain member -> ${denied.content}`);
+
+  // The bot owns this hub, so it may configure itself.
+  ok(
+    await bot.rest.POST("/channels/{channel_id}/messages", {
+      params: { path: { channel_id: channel.id } },
+      body: { content: `/welcome set #${channel.name}` },
+    }),
+  );
+  await new Promise((r) => setTimeout(r, 1000));
+
+  const { code: second } = ok(await bot.rest.POST("/invites", { body: { max_uses: 1 } }));
+  const newcomer = new WavvonClient({ hubUrl, seed: randomBytes(32).toString("hex"), inviteCode: second });
+  const newKey = (await newcomer.login()).canonicalPubkey;
+  const hello = await fromBot((m) => m.content?.includes(newKey.slice(0, 8)), "welcome for a new member");
+  console.log(`a new member joins -> ${hello.content}`);
+} else {
+  console.log("hub lacks events.member.joined: welcome not tested");
+}
 
 events.close();
 console.log("smoke: ok");
