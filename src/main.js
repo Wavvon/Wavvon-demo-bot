@@ -39,7 +39,19 @@ for (const { ctx } of hubs) {
       homepage_url: "https://github.com/Wavvon/Wavvon-demo-bot",
     });
     await client.setAppCommands(router.commands);
-    console.log(`${hubUrl}: ready as ${(await client.login()).canonicalPubkey}`);
+    const subscriptions = await router.subscriptions(client);
+    await client.setAppSubscriptions(subscriptions);
+    if (subscriptions.length > 0) {
+      // The hub pushes hub_event only to a socket opened after the profile exists.
+      const stream = client.connect();
+      stream.onStateChange((s) => console.log(`${hubUrl}: socket ${s}`));
+      stream.on("hub_event", (event) =>
+        Promise.resolve()
+          .then(() => router.onEvent(event, ctx))
+          .catch((e) => console.error(`${hubUrl}: ${event.event} failed, ${e.message}`)),
+      );
+    }
+    console.log(`${hubUrl}: ready as ${(await client.login()).canonicalPubkey}, events: ${subscriptions.map((s) => s.event).join(", ") || "none"}`);
   } catch (e) {
     console.error(`${hubUrl}: could not register, ${e.message}`);
   }
