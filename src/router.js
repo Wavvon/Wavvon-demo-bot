@@ -10,14 +10,19 @@
  *               the capability
  *   routes      { [path]: (request, { config, hubs }) => Response }
  *               HTTP endpoints of the bot's own; `hubs` is every hub's ctx
+ *   games       { [game]: (message, session, ctx) => void }
+ *               what a mini-app frame sends while its channel's session
+ *               (src/mini-app.js) is that game; message is
+ *               { from, channel_id, data } with `data` the parsed payload
  *
- * ctx is the hub the dispatch came from: { hubUrl, client, store }.
+ * ctx is the hub the dispatch came from: { hubUrl, client, store, miniApp }.
  */
 export function createRouter(features) {
   const slash = new Map();
   const components = new Map();
   const commands = [];
   const events = new Map();
+  const games = new Map();
   const routes = new Map([["/hook", null], ["/health", null]]);
   for (const feature of features) {
     for (const [path, handler] of Object.entries(feature.routes ?? {})) {
@@ -34,6 +39,10 @@ export function createRouter(features) {
     for (const [prefix, handler] of Object.entries(feature.components ?? {})) {
       if (components.has(prefix)) throw new Error(`component prefix "${prefix}" is registered twice`);
       components.set(prefix, handler);
+    }
+    for (const [game, handler] of Object.entries(feature.games ?? {})) {
+      if (games.has(game)) throw new Error(`game "${game}" is handled twice`);
+      games.set(game, handler);
     }
     for (const [event, spec] of Object.entries(feature.events ?? {})) {
       if (events.has(event)) throw new Error(`event "${event}" is handled twice`);
@@ -53,6 +62,21 @@ export function createRouter(features) {
     },
     onEvent(event, ctx) {
       return events.get(event.event)?.handle(event, ctx);
+    },
+    /** A frame's mini_app_message. `from_pubkey` is the hub's word for who sent it. */
+    onMiniAppMessage(event, ctx) {
+      if (!event.from_pubkey) return;
+      let data;
+      try {
+        data = JSON.parse(event.payload);
+      } catch {
+        return;
+      }
+      if (!data || typeof data !== "object") return;
+      const message = { from: event.from_pubkey, channel_id: event.channel_id, data };
+      const session = ctx.miniApp.get(event.channel_id);
+      if (!session) return ctx.miniApp.send(event.channel_id, message.from, { t: "ended" });
+      return games.get(session.game)?.(message, session, ctx);
     },
     onSlashCommand(inv, ctx) {
       const handler = slash.get(inv.command);
