@@ -8,6 +8,8 @@
  *   events      { [event]: { capability?, handle: (hubEvent, ctx) => void } }
  *               hub-wide events, subscribed to only where the hub advertises
  *               the capability
+ *   routes      { [path]: (request, { config, hubs }) => Response }
+ *               HTTP endpoints of the bot's own; `hubs` is every hub's ctx
  *
  * ctx is the hub the dispatch came from: { hubUrl, client, store }.
  */
@@ -16,7 +18,12 @@ export function createRouter(features) {
   const components = new Map();
   const commands = [];
   const events = new Map();
+  const routes = new Map([["/hook", null], ["/health", null]]);
   for (const feature of features) {
+    for (const [path, handler] of Object.entries(feature.routes ?? {})) {
+      if (routes.has(path)) throw new Error(`route ${path} is taken`);
+      routes.set(path, handler);
+    }
     for (const command of feature.commands ?? []) {
       if (slash.has(command.name)) throw new Error(`/${command.name} is registered twice`);
       const handler = feature.slash?.[command.name];
@@ -35,6 +42,7 @@ export function createRouter(features) {
   }
   return {
     commands,
+    route: (path) => routes.get(path) ?? undefined,
     /** What this hub can serve, for PUT /me/app/subscriptions. */
     async subscriptions(client) {
       const out = [];

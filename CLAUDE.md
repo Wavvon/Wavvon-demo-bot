@@ -54,7 +54,11 @@ WAVVON_HUB_URL=http://localhost:3000 WAVVON_SEED=$SEED npm run smoke
 ```
 
 `scripts/smoke.mjs` invites a second member with the bot's key, sends every
-command as that member and clicks a `/faq` button over the socket. The bot's
+command as that member and clicks a `/faq` button over the socket, checks the
+hub refuses `/welcome` to that member, then has a third identity join and
+waits for the greeting. Give both the bot and the script the same
+`GITHUB_WEBHOOK_SECRET` and it also delivers the recorded release in
+`test/fixtures/` to the bot's `/github` and waits for the announcement. The bot's
 public key: `node -e "import('@wavvon/sdk').then(m=>console.log(m.identityFromSeed(process.argv[1]).publicKey))" $SEED`.
 
 ## Conventions

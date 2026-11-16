@@ -13,6 +13,8 @@ official and demo hubs, and one process can serve several hubs at once.
 | `/docs <topic>` | Links the matching page of the [Wavvon docs](https://github.com/Wavvon/Wavvon-docs). `/docs` alone lists the topics. |
 | `/welcome set [#channel]`, `/welcome off` | Hub events: greets each new member in the chosen channel (the current one if none is named). Needs a hub advertising `events.member.joined`. |
 
+| `/releases set [#channel]`, `/releases off` | An endpoint of the bot's own: GitHub's `release` webhook, signature checked, announced in the chosen channel. |
+
 Commands that change the bot's settings are registered as *privileged*: the hub
 itself refuses them to anyone without `messages.manage`, so the bot never has
 to decide who is in charge.
@@ -42,6 +44,7 @@ npm start
 | `PUBLIC_BASE_URL` | Where the hubs reach this bot. The hub POSTs commands and button clicks to `<PUBLIC_BASE_URL>/hook`. |
 | `PORT` | HTTP port, default `8080`. |
 | `DATA_DIR` | Where the SQLite file lives, default `./data`. |
+| `GITHUB_WEBHOOK_SECRET` | Turns on `<PUBLIC_BASE_URL>/github`; without it that endpoint does not exist. |
 
 Settings are stored per hub, keyed by the hub URL as written in `WAVVON_HUB_URL`.
 
@@ -62,6 +65,18 @@ Settings are stored per hub, keyed by the hub URL as written in `WAVVON_HUB_URL`
 A hub only calls webhooks over https on a public address. To try the bot against
 a hub on your own machine, start that hub with
 `WAVVON_ALLOW_PRIVATE_WEBHOOKS=true` and use `PUBLIC_BASE_URL=http://localhost:8080`.
+
+## Announce GitHub releases
+
+1. Make a secret (`openssl rand -hex 32`) and set it as `GITHUB_WEBHOOK_SECRET`.
+2. In the GitHub repository (or organization): Settings, Webhooks, Add webhook.
+   Payload URL `<PUBLIC_BASE_URL>/github`, content type `application/json`, the
+   same secret, and "Let me select individual events": **Releases** only.
+3. In each hub, `/releases set #announcements`.
+
+Only `release` events with action `published` are announced, to every hub
+served by this process that has picked a channel. Everything else is accepted
+and ignored.
 
 ## Deploy
 
