@@ -25,7 +25,7 @@ for (const { url, invite } of config.hubs) {
 }
 if (hubs.length === 0) throw new Error("no hub reachable");
 
-createServer(toNodeListener(createApp({ hubs, router }))).listen(config.port, () =>
+createServer(toNodeListener(createApp({ hubs, router, config }))).listen(config.port, () =>
   console.log(`listening on :${config.port}`),
 );
 

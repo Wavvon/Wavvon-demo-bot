@@ -11,7 +11,7 @@ const slash = (command, args_raw = "") => ({ type: "slash_command", command, arg
 
 test("every feature's commands are registered once", () => {
   const names = createRouter(features).commands.map((c) => c.name);
-  assert.deepEqual(names.sort(), ["coin", "docs", "faq", "roll", "welcome"]);
+  assert.deepEqual(names.sort(), ["coin", "docs", "faq", "releases", "roll", "welcome"]);
 });
 
 test("a duplicate command is refused at startup", () => {

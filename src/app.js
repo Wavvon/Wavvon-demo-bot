@@ -6,7 +6,8 @@ import { createDispatchHandler } from "@wavvon/sdk";
  * verified against the key of the hub it names (X-Wavvon-Hub-Pubkey), which
  * the bot pinned from that hub's /info at startup.
  */
-export function createApp({ hubs, router }) {
+export function createApp({ hubs, router, config = {} }) {
+  const shared = { config, hubs: hubs.map((h) => h.ctx) };
   const hooks = new Map();
   for (const { hubPublicKey, ctx } of hubs) {
     hooks.set(
@@ -25,6 +26,7 @@ export function createApp({ hubs, router }) {
       const hook = hooks.get(req.headers.get("x-wavvon-hub-pubkey")?.toLowerCase() ?? "");
       return hook ? hook(req) : new Response("not a hub this bot serves", { status: 401 });
     }
-    return new Response("not found", { status: 404 });
+    const route = router.route(path);
+    return route ? route(req, shared) : new Response("not found", { status: 404 });
   };
 }

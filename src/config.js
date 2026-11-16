@@ -14,5 +14,6 @@ export function loadConfig(env = process.env) {
     publicBaseUrl: env.PUBLIC_BASE_URL.replace(/\/+$/, ""),
     port: Number(env.PORT ?? 8080),
     dataDir: env.DATA_DIR ?? "data",
+    githubSecret: env.GITHUB_WEBHOOK_SECRET || undefined,
   };
 }
