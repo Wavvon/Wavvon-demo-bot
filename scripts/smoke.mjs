@@ -77,6 +77,84 @@ events.send({ type: "component_interaction", message_id: faq.id, custom_id: butt
 const answer = await fromBot((m) => m.content?.includes(button.label), `button ${button.custom_id}`);
 console.log(`/faq button "${button.label}" -> ${answer.content}`);
 
+/** Joins the bot's mini-app in the channel the way a client does, then opens the frame's own socket. */
+async function openFrame(client, stream) {
+  const opened = new Promise((resolve, reject) => {
+    const off = stream.on("app_open", (e) => {
+      off();
+      resolve(e);
+    });
+    setTimeout(() => reject(new Error("no app_open")), 10_000);
+  });
+  stream.send({ type: "app_join", app_id: botKey, channel_id: channel.id });
+  const { session_token } = await opened;
+  const url = new URL(`${hubUrl.replace(/\/+$/, "")}/ws`);
+  url.protocol = url.protocol === "https:" ? "wss:" : "ws:";
+  url.searchParams.set("token", session_token);
+  const ws = new WebSocket(url);
+  const inbox = [];
+  let poke = () => {};
+  const send = (data) =>
+    ws.send(JSON.stringify({ type: "mini_app_message", app_id: botKey, channel_id: channel.id, payload: JSON.stringify(data) }));
+  ws.onmessage = (e) => {
+    const m = JSON.parse(e.data);
+    if (m.type === "hello") send({ t: "hello" });
+    if (m.type === "mini_app_message" && m.channel_id === channel.id) {
+      inbox.push(JSON.parse(m.payload));
+      poke();
+    }
+  };
+  return {
+    send,
+    close: () => ws.close(),
+    /** The next message from the bot that matches, dropping the ones before it. */
+    async next(match, what) {
+      const deadline = Date.now() + 10_000;
+      for (;;) {
+        const i = inbox.findIndex(match);
+        if (i >= 0) return inbox.splice(0, i + 1).at(-1);
+        if (Date.now() > deadline) throw new Error(`frame got no ${what}`);
+        await new Promise((r) => {
+          poke = r;
+          setTimeout(r, 500);
+        });
+      }
+    },
+  };
+}
+
+{
+  const { code: invite } = ok(await bot.rest.POST("/invites", { body: { max_uses: 1 } }));
+  const rival = new WavvonClient({ hubUrl, seed: randomBytes(32).toString("hex"), inviteCode: invite });
+  const rivalKey = (await rival.login()).canonicalPubkey;
+  const rivalEvents = rival.connect();
+  await new Promise((resolve) => rivalEvents.onStateChange((s) => s === "open" && resolve()));
+
+  await say(`/tictactoe ${rivalKey}`);
+  console.log(`/tictactoe -> ${(await fromBot((m) => /challenges/.test(m.content), "/tictactoe")).content}`);
+  const x = await openFrame(tester, events);
+  const o = await openFrame(rival, rivalEvents);
+  await x.next((d) => d.game === "tictactoe" && d.you === "X", "board as X");
+  await o.next((d) => d.game === "tictactoe" && d.you === "O", "board as O");
+
+  o.send({ t: "move", cell: 4 });
+  assert.match((await o.next((d) => d.error, "refusal")).error, /not your turn/);
+  for (const [frame, cell] of [[x, 0], [o, 3], [x, 1], [o, 4]]) {
+    frame.send({ t: "move", cell });
+    await x.next((d) => d.board?.[cell], `move ${cell}`);
+  }
+  x.send({ t: "move", cell: 2 });
+  for (const frame of [x, o]) {
+    const end = await frame.next((d) => d.result, "the result");
+    assert.equal(end.result, "X");
+    assert.deepEqual(end.line, [0, 1, 2]);
+  }
+  console.log(`tic-tac-toe -> ${(await fromBot((m) => /beats/.test(m.content), "result message")).content}`);
+  x.close();
+  o.close();
+  rivalEvents.close();
+}
+
 // The bot owns this hub, so it may configure itself.
 async function asOwner(content) {
   ok(await bot.rest.POST("/channels/{channel_id}/messages", { params: { path: { channel_id: channel.id } }, body: { content } }));

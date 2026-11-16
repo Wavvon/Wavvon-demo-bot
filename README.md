@@ -12,8 +12,8 @@ official and demo hubs, and one process can serve several hubs at once.
 | `/faq` | A reply with buttons; a click is answered to the person who clicked. |
 | `/docs <topic>` | Links the matching page of the [Wavvon docs](https://github.com/Wavvon/Wavvon-docs). `/docs` alone lists the topics. |
 | `/welcome set [#channel]`, `/welcome off` | Hub events: greets each new member in the chosen channel (the current one if none is named). Needs a hub advertising `events.member.joined`. |
-
 | `/releases set [#channel]`, `/releases off` | An endpoint of the bot's own: GitHub's `release` webhook, signature checked, announced in the chosen channel. |
+| `/tictactoe @member` | A mini-app: a launch card in the channel opens a two-player board. The bot holds the game, checks every move and decides the result; anyone else who joins watches. |
 
 Commands that change the bot's settings are registered as *privileged*: the hub
 itself refuses them to anyone without `messages.manage`, so the bot never has
@@ -65,6 +65,23 @@ Settings are stored per hub, keyed by the hub URL as written in `WAVVON_HUB_URL`
 A hub only calls webhooks over https on a public address. To try the bot against
 a hub on your own machine, start that hub with
 `WAVVON_ALLOW_PRIVATE_WEBHOOKS=true` and use `PUBLIC_BASE_URL=http://localhost:8080`.
+
+## Mini-apps
+
+The games run in a *mini-app*: a page this bot serves at
+`<PUBLIC_BASE_URL>/play/`, which the Wavvon client opens in a frame when someone
+presses Join on a launch card. The frame talks to the bot only through the hub's
+WebSocket (`mini_app_message`), with a token the hub scoped to that one channel,
+and the bot answers each player separately. It is plain HTML and JavaScript in
+`frame/`, with nothing loaded from anywhere else; keyboard players can do
+everything a mouse can.
+
+The web client loads mini-apps over https only, so behind a local
+`PUBLIC_BASE_URL=http://…` the games open in the desktop client but not on the
+web.
+
+One game runs per channel at a time; a game nobody touches for ten minutes is
+closed. Games live in memory and end when the bot restarts.
 
 ## Announce GitHub releases
 

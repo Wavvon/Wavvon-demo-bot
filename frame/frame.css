@@ -1,0 +1,79 @@
+:root {
+  --bg: #f6f4ef;
+  --fg: #1f1d1a;
+  --muted: #6b665d;
+  --cell: #ffffff;
+  --line: #d6d0c4;
+  --accent: #b5651d;
+  --win: #f3d9b8;
+  color-scheme: light dark;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #17161a;
+    --fg: #ecebe6;
+    --muted: #a19d94;
+    --cell: #24232a;
+    --line: #3a3842;
+    --accent: #e39a4d;
+    --win: #4a3520;
+  }
+}
+* {
+  box-sizing: border-box;
+}
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--fg);
+  font: 16px/1.4 system-ui, sans-serif;
+}
+main {
+  max-width: 32rem;
+  margin: 0 auto;
+  padding: 1rem;
+  text-align: center;
+}
+h1 {
+  font-size: 1.3rem;
+  margin: 0.25rem 0;
+}
+.help,
+#status,
+.players {
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+button:focus-visible {
+  outline: 3px solid var(--accent);
+  outline-offset: 2px;
+}
+.board {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(3.5rem, 6rem));
+  gap: 0.4rem;
+  justify-content: center;
+  margin: 1rem 0;
+}
+.cell {
+  aspect-ratio: 1;
+  border: 2px solid var(--line);
+  border-radius: 0.5rem;
+  background: var(--cell);
+  color: var(--fg);
+  font: 700 2.4rem/1 system-ui, sans-serif;
+  cursor: pointer;
+}
+.cell[data-mark="O"] {
+  color: var(--accent);
+}
+.cell[aria-disabled="true"] {
+  cursor: default;
+}
+.cell.win {
+  background: var(--win);
+}
+.turn {
+  font-weight: 600;
+  min-height: 1.4em;
+}
