@@ -2,9 +2,10 @@
 // postMessage), a webview window on desktop (context injected as globals).
 // Talks only to the hub's /ws with the scoped token, and only to this bot.
 import cairn from "./cairn.js";
+import loam from "./loam.js";
 import tictactoe from "./tictactoe.js";
 
-const views = { cairn, tictactoe };
+const views = { cairn, loam, tictactoe };
 const gameRoot = document.getElementById("game");
 const status = document.getElementById("status");
 

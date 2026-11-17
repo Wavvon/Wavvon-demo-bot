@@ -108,8 +108,8 @@ async function openFrame(client, stream, channelId = channel.id) {
     send,
     close: () => ws.close(),
     /** The next message from the bot that matches, dropping the ones before it. */
-    async next(match, what) {
-      const deadline = Date.now() + 10_000;
+    async next(match, what, ms = 10_000) {
+      const deadline = Date.now() + ms;
       for (;;) {
         const i = inbox.findIndex(match);
         if (i >= 0) return inbox.splice(0, i + 1).at(-1);
@@ -182,6 +182,49 @@ async function openFrame(client, stream, channelId = channel.id) {
   const top = await fromBot((m) => /top 10/.test(m.content), "/leaderboard");
   assert.ok(top.content.includes(`${me.slice(0, 8)}…: **40**`), top.content);
   console.log(`/leaderboard -> ${top.content.replace(/\n+/g, " / ")}`);
+}
+
+{
+  // Loam belongs in a voice channel: that is where the client lets its frame move the player.
+  const { code: invite } = ok(await bot.rest.POST("/invites", { body: { max_uses: 1 } }));
+  const rival = new WavvonClient({ hubUrl, seed: randomBytes(32).toString("hex"), inviteCode: invite });
+  const rivalKey = (await rival.login()).canonicalPubkey;
+  const rivalEvents = rival.connect();
+  await new Promise((resolve) => rivalEvents.onStateChange((s) => s === "open" && resolve()));
+  const plot = ok(await bot.rest.POST("/channels", { body: { name: `smoke-loam-${Date.now()}`, channel_type: "voice" } }));
+  events.send({ type: "subscribe", channel_id: plot.id });
+  rivalEvents.send({ type: "subscribe", channel_id: plot.id });
+
+  await say("/loam 9", plot.id);
+  assert.match((await fromBot((m) => /1 to 5 minutes/.test(m.content), "/loam 9")).content, /1 to 5/);
+  await new Promise((r) => setTimeout(r, 3500));
+  await say("/loam 1", plot.id);
+  console.log(`/loam 1 -> ${(await fromBot((m) => /Loam is open/.test(m.content), "/loam")).content}`);
+  const a = await openFrame(tester, events, plot.id);
+  const b = await openFrame(rival, rivalEvents, plot.id);
+  const lobby = await a.next((d) => d.game === "loam" && d.worms.length === 2, "both worms in the lobby");
+  assert.equal(lobby.phase, "lobby");
+  assert.equal(lobby.you, 0);
+  assert.equal((await b.next((d) => d.game === "loam" && d.worms.length === 2, "the lobby as B")).you, 1);
+  console.log(`Loam lobby -> ${lobby.worms.map((w) => w.name).join(", ")}`);
+
+  b.send({ t: "start" });
+  const go = await a.next((d) => d.phase === "running", "the round to start");
+  const head = go.worms[0].body[0];
+  a.send({ t: "steer", dir: go.worms[0].body[1][1] === head[1] ? "down" : "right" });
+  const moved = await a.next((d) => d.phase === "running" && d.worms[0].body[0].join() !== head.join(), "A's worm to move");
+  console.log(`Loam running -> A's head ${head} -> ${moved.worms[0].body[0]}, ${Math.round(moved.left_ms / 1000)} s left`);
+
+  const over = await a.next((d) => d.phase === "over", "the end of the round", 75_000);
+  assert.equal(over.standings.length, 2);
+  await b.next((d) => d.phase === "over", "the end of the round as B");
+  const result = await fromBot((m) => /Loam: the round is over/.test(m.content), "Loam result");
+  console.log(`Loam result -> ${result.content.replace(/\n+/g, " / ")}`);
+  assert.ok(result.content.includes(`1. ${over.standings[0].name}: ${over.standings[0].length} long`), result.content);
+  assert.ok(over.standings.some((s) => s.name.startsWith(rivalKey.slice(0, 8))), "unnamed members show by key");
+  a.close();
+  b.close();
+  rivalEvents.close();
 }
 
 // The bot owns this hub, so it may configure itself.
