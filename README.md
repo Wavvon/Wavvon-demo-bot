@@ -14,6 +14,8 @@ official and demo hubs, and one process can serve several hubs at once.
 | `/welcome set [#channel]`, `/welcome off` | Hub events: greets each new member in the chosen channel (the current one if none is named). Needs a hub advertising `events.member.joined`. |
 | `/releases set [#channel]`, `/releases off` | An endpoint of the bot's own: GitHub's `release` webhook, signature checked, announced in the chosen channel. |
 | `/tictactoe @member` | A mini-app: a launch card in the channel opens a two-player board. The bot holds the game, checks every move and decides the result; anyone else who joins watches. |
+| `/cairn` | A single-player mini-app: Cairn, a falling-stones puzzle. Scores go to the bot, which keeps one leaderboard per hub. |
+| `/leaderboard` | This hub's top 10 Cairn players, each by their best run. |
 
 Commands that change the bot's settings are registered as *privileged*: the hub
 itself refuses them to anyone without `messages.manage`, so the bot never has
@@ -82,6 +84,28 @@ web.
 
 One game runs per channel at a time; a game nobody touches for ten minutes is
 closed. Games live in memory and end when the bot restarts.
+
+### Cairn
+
+Stones fall into a ravine nine cells wide; fill a row and it clears. What makes
+it Cairn:
+
+- Six stones of one to five cells, from the single pebble to the arch.
+- Some stones carry a gem. A cleared row holding a gem scores double.
+- Every eight rows the ravine deepens: stones fall faster and every clear is
+  worth more.
+- Clearing more rows with one stone pays more: 10, 30 or 60 points for one,
+  two or three rows, times the depth.
+
+Arrows move, Up or X turns, Space drops, P pauses; on a touch screen, the
+buttons under the ravine do the same.
+
+**A client-side game cannot be made cheat-proof.** The game runs in the
+player's frame, so a player who edits the page or speaks the protocol by hand
+can send any score. The bot checks what it can: that it saw the run start,
+that the score is one the rules can produce from that many rows, and that the
+rows could have been cleared in the time between start and finish. That stops
+an impossible score, not a patient forger. Treat the leaderboard as a toy.
 
 ## Announce GitHub releases
 

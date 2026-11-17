@@ -1,6 +1,10 @@
 import { DatabaseSync } from "node:sqlite";
 
-/** Per-hub key/value settings in SQLite. `hub` is the hub URL the bot was configured with. */
+/**
+ * Per-hub key/value settings in SQLite. `hub` is the hub URL the bot was
+ * configured with. `db` is the same database, for a feature that needs a
+ * table of its own (it creates it, keyed by hub like this one).
+ */
 export function openStore(path) {
   const db = new DatabaseSync(path);
   db.exec(
@@ -12,6 +16,7 @@ export function openStore(path) {
   );
   const del = db.prepare("DELETE FROM settings WHERE hub = ? AND key = ?");
   return {
+    db,
     get: (hub, key) => get.get(hub, key)?.value,
     set: (hub, key, value) => void set.run(hub, key, value),
     delete: (hub, key) => void del.run(hub, key),

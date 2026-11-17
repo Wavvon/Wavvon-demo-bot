@@ -1,9 +1,10 @@
 // Runs inside the Wavvon client: an iframe on web (context arrives by
 // postMessage), a webview window on desktop (context injected as globals).
 // Talks only to the hub's /ws with the scoped token, and only to this bot.
+import cairn from "./cairn.js";
 import tictactoe from "./tictactoe.js";
 
-const views = { tictactoe };
+const views = { cairn, tictactoe };
 const gameRoot = document.getElementById("game");
 const status = document.getElementById("status");
 
