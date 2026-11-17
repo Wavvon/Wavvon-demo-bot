@@ -29,7 +29,8 @@ Plain JavaScript, ESM, Node 22.13+, no build step. The only dependency is the SD
 - `src/router.js` joins features. **A feature is one module in
   `src/features/`**, listed in `src/features/index.js`; `router.js` documents
   its shape. A new feature should not need to touch any other.
-- `src/store.js` per-hub key/value settings in `DATA_DIR/bot.sqlite`.
+- `src/store.js` per-hub key/value settings in `DATA_DIR/bot.sqlite`; its `db`
+  is there for a feature that needs its own table (Cairn's leaderboard).
 - `src/mini-app.js` the bot's mini-app sessions, one per channel. The hub opens
   the same `mini_app_url` for every launch card, so the frame learns which game
   it shows from the bot's first answer to its `hello`; a game feature handles
@@ -64,7 +65,8 @@ WAVVON_HUB_URL=http://localhost:3000 WAVVON_SEED=$SEED npm run smoke
 `scripts/smoke.mjs` invites a second member with the bot's key, sends every
 command as that member and clicks a `/faq` button over the socket, plays a
 full `/tictactoe` game against a third member through two scoped mini-app
-sockets (`app_join`, then `/ws?token=`), checks the
+sockets (`app_join`, then `/ws?token=`), submits an impossible and a
+plausible Cairn score and reads them back with `/leaderboard`, checks the
 hub refuses `/welcome` to that member, then has a newcomer join and
 waits for the greeting. Give both the bot and the script the same
 `GITHUB_WEBHOOK_SECRET` and it also delivers the recorded release in

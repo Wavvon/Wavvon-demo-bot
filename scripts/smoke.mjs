@@ -50,8 +50,8 @@ async function fromBot(match, what) {
   }
 }
 
-const say = async (content) =>
-  ok(await tester.rest.POST("/channels/{channel_id}/messages", { params: { path: { channel_id: channel.id } }, body: { content } }));
+const say = async (content, channel_id = channel.id) =>
+  ok(await tester.rest.POST("/channels/{channel_id}/messages", { params: { path: { channel_id } }, body: { content } }));
 
 await say("/roll 3d6");
 const roll = await fromBot((m) => /rolled 3d6/.test(m.content), "/roll 3d6");
@@ -78,7 +78,7 @@ const answer = await fromBot((m) => m.content?.includes(button.label), `button $
 console.log(`/faq button "${button.label}" -> ${answer.content}`);
 
 /** Joins the bot's mini-app in the channel the way a client does, then opens the frame's own socket. */
-async function openFrame(client, stream) {
+async function openFrame(client, stream, channelId = channel.id) {
   const opened = new Promise((resolve, reject) => {
     const off = stream.on("app_open", (e) => {
       off();
@@ -86,7 +86,7 @@ async function openFrame(client, stream) {
     });
     setTimeout(() => reject(new Error("no app_open")), 10_000);
   });
-  stream.send({ type: "app_join", app_id: botKey, channel_id: channel.id });
+  stream.send({ type: "app_join", app_id: botKey, channel_id: channelId });
   const { session_token } = await opened;
   const url = new URL(`${hubUrl.replace(/\/+$/, "")}/ws`);
   url.protocol = url.protocol === "https:" ? "wss:" : "ws:";
@@ -95,11 +95,11 @@ async function openFrame(client, stream) {
   const inbox = [];
   let poke = () => {};
   const send = (data) =>
-    ws.send(JSON.stringify({ type: "mini_app_message", app_id: botKey, channel_id: channel.id, payload: JSON.stringify(data) }));
+    ws.send(JSON.stringify({ type: "mini_app_message", app_id: botKey, channel_id: channelId, payload: JSON.stringify(data) }));
   ws.onmessage = (e) => {
     const m = JSON.parse(e.data);
     if (m.type === "hello") send({ t: "hello" });
-    if (m.type === "mini_app_message" && m.channel_id === channel.id) {
+    if (m.type === "mini_app_message" && m.channel_id === channelId) {
       inbox.push(JSON.parse(m.payload));
       poke();
     }
@@ -153,6 +153,35 @@ async function openFrame(client, stream) {
   x.close();
   o.close();
   rivalEvents.close();
+}
+
+{
+  // Tic-tac-toe holds the first channel until its result has been on screen a while.
+  const arcade = ok(await bot.rest.POST("/channels", { body: { name: `smoke-arcade-${Date.now()}`, channel_type: "text" } }));
+  events.send({ type: "subscribe", channel_id: arcade.id });
+  await say("/cairn", arcade.id);
+  console.log(`/cairn -> ${(await fromBot((m) => /Cairn is open/.test(m.content), "/cairn")).content}`);
+  const frame = await openFrame(tester, events, arcade.id);
+  assert.equal((await frame.next((d) => d.game === "cairn" && d.t === "hello", "Cairn hello")).best, null);
+
+  frame.send({ t: "start" });
+  frame.send({ t: "score", score: 600, lines: 3 });
+  const cheat = await frame.next((d) => d.t === "result", "verdict on an impossible score");
+  assert.equal(cheat.accepted, false);
+  console.log(`Cairn, 600 points from 3 rows -> refused: ${cheat.reason}`);
+
+  frame.send({ t: "start" });
+  await new Promise((r) => setTimeout(r, 1500));
+  frame.send({ t: "score", score: 40, lines: 3 });
+  const kept = await frame.next((d) => d.t === "result", "verdict on a plausible score");
+  assert.deepEqual([kept.accepted, kept.best, kept.rank], [true, 40, 1]);
+  console.log("Cairn, 40 points from 3 rows in 1.5 s -> recorded, rank 1");
+  frame.close();
+
+  await say("/leaderboard", arcade.id);
+  const top = await fromBot((m) => /top 10/.test(m.content), "/leaderboard");
+  assert.ok(top.content.includes(`${me.slice(0, 8)}…: **40**`), top.content);
+  console.log(`/leaderboard -> ${top.content.replace(/\n+/g, " / ")}`);
 }
 
 // The bot owns this hub, so it may configure itself.
