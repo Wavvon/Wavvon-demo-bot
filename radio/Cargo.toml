@@ -1,0 +1,19 @@
+[package]
+name = "wavvon-radio"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.88"
+description = "Plays an Ogg Opus file or stream into a Wavvon voice channel"
+license = "Apache-2.0"
+publish = false
+
+[dependencies]
+wavvon-sdk = { git = "https://github.com/Wavvon/Wavvon-sdk-rust", rev = "34f9c0ef04c796b5c6938497822f44233936805a", features = ["voice-pcm"] }
+audiopus = "0.2"
+reqwest = { version = "0.13", default-features = false, features = ["rustls"] }
+tokio = { version = "1.53.3", features = ["rt-multi-thread", "macros", "time", "fs", "signal", "process"] }
+
+[dev-dependencies]
+serde_json = "1"
+
+[workspace]
