@@ -39,6 +39,10 @@ Plain JavaScript, ESM, Node 22.13+, no build step. The only dependency is the SD
   Static ES modules, no build, nothing external (its CSP forbids it). It must
   read its context both ways: desktop injects `window.__WAVVON_*` globals, web
   `postMessage`s `wavvon_context` from the parent.
+- `frame/voice.js` the client's host bridge (Wavvon-docs `mini-app-bridge.md`):
+  a frame may set its own player's place in the channel's proximity voice zone.
+  A client without the bridge never sends `wavvon:voiceState`; the game must
+  play the same and say so.
 
 ## Rules
 
@@ -66,7 +70,8 @@ WAVVON_HUB_URL=http://localhost:3000 WAVVON_SEED=$SEED npm run smoke
 command as that member and clicks a `/faq` button over the socket, plays a
 full `/tictactoe` game against a third member through two scoped mini-app
 sockets (`app_join`, then `/ws?token=`), submits an impossible and a
-plausible Cairn score and reads them back with `/leaderboard`, checks the
+plausible Cairn score and reads them back with `/leaderboard`, plays a one-minute
+Loam round with two members in a voice channel, checks the
 hub refuses `/welcome` to that member, then has a newcomer join and
 waits for the greeting. Give both the bot and the script the same
 `GITHUB_WEBHOOK_SECRET` and it also delivers the recorded release in

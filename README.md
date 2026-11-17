@@ -16,6 +16,7 @@ official and demo hubs, and one process can serve several hubs at once.
 | `/tictactoe @member` | A mini-app: a launch card in the channel opens a two-player board. The bot holds the game, checks every move and decides the result; anyone else who joins watches. |
 | `/cairn` | A single-player mini-app: Cairn, a falling-stones puzzle. Scores go to the bot, which keeps one leaderboard per hub. |
 | `/leaderboard` | This hub's top 10 Cairn players, each by their best run. |
+| `/loam [minutes]` | A multiplayer mini-app with proximity voice: Loam, worms in a garden plot whose voices fade as they drift apart. Rounds of 1 to 5 minutes, 3 by default. |
 
 Commands that change the bot's settings are registered as *privileged*: the hub
 itself refuses them to anyone without `messages.manage`, so the bot never has
@@ -106,6 +107,34 @@ can send any score. The bot checks what it can: that it saw the run start,
 that the score is one the rules can produce from that many rows, and that the
 rows could have been cleared in the time between start and finish. That stops
 an impossible score, not a patient forger. Treat the leaderboard as a toy.
+
+### Loam
+
+Up to eight worms share a garden plot, 40 cells square. Dew drops appear
+around it; a worm that reaches one grows by a segment. Touch a wall or any
+worm, your own tail included, and you curl up: you keep half your length,
+the other half is left behind as dew for whoever gets there first, and you
+rest for a moment before setting off again. Nobody is knocked out. When the
+time is up the longest worm wins, and the bot posts the standings in the
+channel.
+
+Arrows or WASD steer, Enter starts a round; on a touch screen, the buttons
+under the plot. Anyone who presses Join gets a worm, until the plot is full;
+later arrivals watch.
+
+The bot runs the plot. Each frame only sends its player's turns, and reports
+its own worm's place to its own Wavvon client, which stands that player there
+in the channel's proximity voice. To hear it:
+
+1. Run `/loam` in a **voice channel**: the client moves you only in the voice
+   of the channel the game was opened in.
+2. Someone who can manage channels turns on that channel's **room map** in the
+   voice panel. That creates the zone the worms are mapped onto.
+3. Everyone joins the channel's voice, then presses Join on the card.
+
+Without any of these the game plays the same and the frame says why voice is
+not following the worms: not in this channel's voice, no room map, or a client
+without the mini-app voice bridge.
 
 ## Announce GitHub releases
 
